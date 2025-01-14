@@ -9,7 +9,7 @@ namespace LabsonCS
         double elementDamage;
         Element weakness;
         Element damageType;
-    public MonsterEntity(string name, double healthPoints, double baseDamage, double elementDamage, Element weakness, Element damageType): base(name, healthPoints)
+    public MonsterEntity(double healthPoints, double baseDamage, double elementDamage, Element weakness, Element damageType): base(healthPoints)
     {
         this.baseDamage = baseDamage;
         this.elementDamage = elementDamage;
@@ -26,14 +26,6 @@ namespace LabsonCS
         player.Hurt(baseDamage, elementDamage, damageType);
     }
 
-    public new void Print()
-    {
-        base.Print();
-        Console.WriteLine("Base damage: " + baseDamage);
-        Console.WriteLine("Elemental damage: " + elementDamage);
-        Console.WriteLine("Elemental weakness type: " + weakness);
-        Console.WriteLine("Elemental type of damage: " + damageType);
-    }
     public Element GetMonsterWeakness()
     {
         return weakness;

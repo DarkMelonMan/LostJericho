@@ -17,6 +17,7 @@ public class InventoryWindow : MonoBehaviour
     {
         inventory.onItemAdded += onItemAdded;
         redraw();
+        itemsPanel.gameObject.SetActive(false);
     }
 
     private void onItemAdded(Item item) => redraw();
@@ -25,7 +26,10 @@ public class InventoryWindow : MonoBehaviour
 
     private void Update()
     {
-        
+        if (inventory.hidden)
+            itemsPanel.gameObject.SetActive(false);
+        else itemsPanel.gameObject.SetActive(true);
+
     }
 
     void redraw() {

@@ -5,7 +5,7 @@
     private readonly Armor armor;
     private readonly Weapon weapon;
 
-        public PlayerEntity(string name, double healthPoints, Armor armor, Weapon weapon) : base(name, healthPoints) {
+        public PlayerEntity(double healthPoints, Armor armor, Weapon weapon) : base(healthPoints) {
         this.armor = armor;
         this.weapon = weapon;
     }
@@ -28,13 +28,6 @@
     public void AttackMonster(MonsterEntity monster)
     {
         monster.Hurt(weapon.GetDamage(monster.GetMonsterWeakness()));
-    }
-
-    public new void Print()
-    {
-        base.Print();
-        armor.Print();
-        weapon.Print();
     }
 }
 }

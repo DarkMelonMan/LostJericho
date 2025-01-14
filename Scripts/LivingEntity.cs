@@ -4,12 +4,10 @@ namespace LabsonCS
 {
     public class LivingEntity
     {
-        protected string name;
         protected double healthPoints;
 
-        public LivingEntity(string name, double healthPoints)
+        public LivingEntity(double healthPoints)
         {
-            this.name = name;
             this.healthPoints = healthPoints;
         }
 
@@ -19,15 +17,8 @@ namespace LabsonCS
             if (healthPoints <= 0.0F)
             {
                 healthPoints = 0.0F;
-                Console.WriteLine(name + " entity is dead!");
             }
 
-        }
-
-        public void Print()
-        {
-            Console.WriteLine(name + " entity:");
-            Console.WriteLine("Health points: " + healthPoints);
         }
 
         public double GetHealthPoints()

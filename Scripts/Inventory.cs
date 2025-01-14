@@ -12,7 +12,7 @@ public class Inventory : MonoBehaviour
     [SerializeField] List<ArmorItem> StartArmor = new List<ArmorItem>();
     [SerializeField] List<WeaponItem> StartWeapon = new List<WeaponItem>();
     public List<Item> InventoryItem = new List<Item>();
-
+    public bool hidden = true;
     // Start is called before the first frame update
 
 
