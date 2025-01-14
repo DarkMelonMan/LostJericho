@@ -1,2 +1,2 @@
 # LostJericho
-2D Dark Souls
+Курсовой проект
