@@ -1,4 +1,4 @@
-﻿using LabsonCS;
+using LabsonCS;
 using UnityEngine;
 
 public class HeroKnight : MonoBehaviour
@@ -7,11 +7,11 @@ public class HeroKnight : MonoBehaviour
     PlayerEntity player;
     Armor defaultArmor;
     Weapon defaultWeapon;
-    [SerializeField] double baseDefence;
-    [SerializeField] double elementDefence;
+    [SerializeField] float baseDefence;
+    [SerializeField] float elementDefence;
     [SerializeField] Element defenceType;
-    [SerializeField] double baseDamage = 1;
-    [SerializeField] double elementDamage = 0;
+    [SerializeField] float baseDamage = 1;
+    [SerializeField] float elementDamage = 0;
     [SerializeField] Element damageType = Element.NONE;
 
     [SerializeField] float maxHealthPoints = 100.0f;
@@ -19,38 +19,38 @@ public class HeroKnight : MonoBehaviour
     public HealthBar healthBar;
     bool dead = false;
 
-    [SerializeField] float m_speed = 4.0f;
-    [SerializeField] float m_jumpForce = 7.5f;
-    [SerializeField] float m_rollForce = 6.0f;
-    [SerializeField] bool m_noBlood = false;
-    [SerializeField] GameObject m_slideDust;
+    [SerializeField] float speed = 4.0f;
+    [SerializeField] float jumpForce = 7.5f;
+    [SerializeField] float rollForce = 6.0f;
+    [SerializeField] GameObject slideDust;
 
-    private Animator m_animator;
-    private Rigidbody2D m_body2d;
-    private Sensor_HeroKnight m_groundSensor;
-    private Sensor_HeroKnight m_wallSensorR1;
-    private Sensor_HeroKnight m_wallSensorR2;
-    private Sensor_HeroKnight m_wallSensorL1;
-    private Sensor_HeroKnight m_wallSensorL2;
-    private bool m_isWallSliding = false;
-    private bool m_grounded = false;
-    private bool m_rolling = false;
-    private int m_facingDirection = 1;
-    private float m_delayToIdle = 0.0f;
-    private float m_rollDuration = 8.0f / 14.0f;
-    private float m_rollCurrentTime;
+    private Animator animator;
+    private Rigidbody2D body2d;
+    private Sensor_HeroKnight groundSensor;
+    private Sensor_HeroKnight wallSensorR1;
+    private Sensor_HeroKnight wallSensorR2;
+    private Sensor_HeroKnight wallSensorL1;
+    private Sensor_HeroKnight wallSensorL2;
+    private bool isWallSliding = false;
+    private bool grounded = false;
+    private bool rolling = false;
+    private int facingDirection = 1;
+    private float delayToIdle = 0.0f;
+    private float rollDuration = 8.0f / 14.0f;
+    private float rollCurrentTime;
 
     public static HeroKnight Instance;
     [Header("Attacking")]
 
     private bool attack = false;
-    private int m_currentAttack = 0;
-    private float m_timeSinceAttack = 0.0f;
-    private float m_timeBetween;
+    private int currentAttack = 0;
+    private float timeSinceAttack = 0.0f;
+    private float timeBetween;
 
     [SerializeField] Transform SideAttackTransform;
     [SerializeField] Vector2 SideAttackArea;
     [SerializeField] LayerMask attackableLayer;
+    float sideAttackTransformX;
 
     Inventory inventory;
 
@@ -70,15 +70,16 @@ public class HeroKnight : MonoBehaviour
     // Use this for initialization
     void Start()
     {
-        m_animator = GetComponent<Animator>();
-        m_body2d = GetComponent<Rigidbody2D>();
+        sideAttackTransformX = SideAttackTransform.localPosition.x;
+        animator = GetComponent<Animator>();
+        body2d = GetComponent<Rigidbody2D>();
         inventory = GetComponent<Inventory>();
         inventory.hidden = true;
-        m_groundSensor = transform.Find("GroundSensor").GetComponent<Sensor_HeroKnight>();
-        m_wallSensorR1 = transform.Find("WallSensor_R1").GetComponent<Sensor_HeroKnight>();
-        m_wallSensorR2 = transform.Find("WallSensor_R2").GetComponent<Sensor_HeroKnight>();
-        m_wallSensorL1 = transform.Find("WallSensor_L1").GetComponent<Sensor_HeroKnight>();
-        m_wallSensorL2 = transform.Find("WallSensor_L2").GetComponent<Sensor_HeroKnight>();
+        groundSensor = transform.Find("GroundSensor").GetComponent<Sensor_HeroKnight>();
+        wallSensorR1 = transform.Find("WallSensor_R1").GetComponent<Sensor_HeroKnight>();
+        wallSensorR2 = transform.Find("WallSensor_R2").GetComponent<Sensor_HeroKnight>();
+        wallSensorL1 = transform.Find("WallSensor_L1").GetComponent<Sensor_HeroKnight>();
+        wallSensorL2 = transform.Find("WallSensor_L2").GetComponent<Sensor_HeroKnight>();
         defaultArmor = new Armor(baseDefence, elementDefence, defenceType);
         defaultWeapon = new Weapon(baseDamage, elementDamage, damageType);
         healthPoints = maxHealthPoints;
@@ -88,7 +89,7 @@ public class HeroKnight : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        Gizmos.color = Color.red;
+        Gizmos.color = Color.green;
         Gizmos.DrawWireCube(SideAttackTransform.position, SideAttackArea);
     }
 
@@ -108,66 +109,69 @@ public class HeroKnight : MonoBehaviour
         attack = Input.GetMouseButtonDown(0);
 
         // Увеличить таймер, считающий комбо-удары
-        m_timeSinceAttack += Time.deltaTime;
+        timeSinceAttack += Time.deltaTime;
 
         // Открыть инвентарь
         if (Input.GetKeyDown("tab"))
             inventory.hidden = inventory.hidden ? false : true;
 
         // Увеличить таймер, считающий время в перекате
-        if (m_rolling)
-            m_rollCurrentTime += Time.deltaTime;
+        if (rolling)
+            rollCurrentTime += Time.deltaTime;
 
         // Отключить перекат, если время переката окончено
-        if (m_rollCurrentTime > m_rollDuration)
+        if (rollCurrentTime > rollDuration)
         {
-            m_rolling = false;
-            m_rollCurrentTime = 0;
+            rolling = false;
+            rollCurrentTime = 0;
         }
 
         // Проверить, если персонаж только приземлился
-        if (!m_grounded && m_groundSensor.State())
+        if (!grounded && groundSensor.State())
         {
-            m_grounded = true;
-            m_animator.SetBool("Grounded", m_grounded);
+            grounded = true;
+            animator.SetBool("Grounded", grounded);
         }
 
         // Проверить, если персонаж начал падать
-        if (m_grounded && !m_groundSensor.State())
+        if (grounded && !groundSensor.State())
         {
-            m_grounded = false;
-            m_animator.SetBool("Grounded", m_grounded);
+            grounded = false;
+            animator.SetBool("Grounded", grounded);
         }
 
         float inputX = Input.GetAxis("Horizontal");
 
         // Сменить направление спрайта в зависимости от направления движения
-        if (inputX > 0 && !m_animator.GetBool("IdleBlock") && !m_animator.GetBool("Hurt") && !m_rolling)
+        if (inputX > 0 && !animator.GetBool("IdleBlock") && !animator.GetBool("Hurt") && !rolling)
         {
             GetComponent<SpriteRenderer>().flipX = false;
-            m_facingDirection = 1;
+            facingDirection = 1;
+            SideAttackTransform.localPosition = new Vector2(sideAttackTransformX, SideAttackTransform.localPosition.y);
         }
 
-        else if (inputX < 0 && !m_animator.GetBool("IdleBlock") && !m_animator.GetBool("Hurt") && !m_rolling)
+        else if (inputX < 0 && !animator.GetBool("IdleBlock") && !animator.GetBool("Hurt") && !rolling)
         {
             GetComponent<SpriteRenderer>().flipX = true;
-            m_facingDirection = -1;
+            facingDirection = -1;
+            SideAttackTransform.localPosition = new Vector2(-sideAttackTransformX, SideAttackTransform.localPosition.y);
         }
 
+
         // Движение
-        if (!m_rolling && !m_animator.GetBool("IdleBlock") && !m_animator.GetBool("Hurt"))
-            m_body2d.velocity = new Vector2(inputX * m_speed, m_body2d.velocity.y);
+        if (!rolling && !animator.GetBool("IdleBlock") && !animator.GetBool("Hurt"))
+            body2d.velocity = new Vector2(inputX * speed, body2d.velocity.y);
 
         // Установить скорость движения в воздухе
-        m_animator.SetFloat("AirSpeedY", m_body2d.velocity.y);
+        animator.SetFloat("AirSpeedY", body2d.velocity.y);
 
 
         // Скольжение по стене
-        m_isWallSliding = (m_wallSensorR1.State() && m_wallSensorR2.State()) || (m_wallSensorL1.State() && m_wallSensorL2.State());
-        m_animator.SetBool("WallSlide", m_isWallSliding);
+        isWallSliding = (wallSensorR1.State() && wallSensorR2.State()) || (wallSensorL1.State() && wallSensorL2.State());
+        animator.SetBool("WallSlide", isWallSliding);
 
         // Умереть
-        if (healthPoints <= 0 && !m_rolling)
+        if (healthPoints <= 0 && !rolling)
             Die();
 
         // Получить урон
@@ -184,7 +188,7 @@ public class HeroKnight : MonoBehaviour
 
         // Убрать щит
         else if (Input.GetMouseButtonUp(1))
-            m_animator.SetBool("IdleBlock", false);
+            animator.SetBool("IdleBlock", false);
 
         // Перекат
         else if (Input.GetKeyDown("left shift"))
@@ -198,17 +202,17 @@ public class HeroKnight : MonoBehaviour
         else if (Mathf.Abs(inputX) > Mathf.Epsilon)
         {
             // Reset timer
-            m_delayToIdle = 0.05f;
-            m_animator.SetInteger("AnimState", 1);
+            delayToIdle = 0.05f;
+            animator.SetInteger("AnimState", 1);
         }
 
         // Анимация покоя
         else
         {
             // Prevents flickering transitions to idle
-            m_delayToIdle -= Time.deltaTime;
-            if (m_delayToIdle < 0)
-                m_animator.SetInteger("AnimState", 0);
+            delayToIdle -= Time.deltaTime;
+            if (delayToIdle < 0)
+                animator.SetInteger("AnimState", 0);
         }
     }
 
@@ -218,38 +222,38 @@ public class HeroKnight : MonoBehaviour
     {
         Vector3 spawnPosition;
 
-        if (m_facingDirection == 1)
-            spawnPosition = m_wallSensorR2.transform.position;
+        if (facingDirection == 1)
+            spawnPosition = wallSensorR2.transform.position;
         else
-            spawnPosition = m_wallSensorL2.transform.position;
+            spawnPosition = wallSensorL2.transform.position;
 
-        if (m_slideDust != null)
+        if (slideDust != null)
         {
             // Set correct arrow spawn position
-            GameObject dust = Instantiate(m_slideDust, spawnPosition, gameObject.transform.localRotation) as GameObject;
+            GameObject dust = Instantiate(slideDust, spawnPosition, gameObject.transform.localRotation) as GameObject;
             // Turn arrow in correct direction
-            dust.transform.localScale = new Vector3(m_facingDirection, 1, 1);
+            dust.transform.localScale = new Vector3(facingDirection, 1, 1);
         }
     }
     void Attack()
     {
-        if (!m_rolling && !m_animator.GetBool("IdleBlock") && !m_animator.GetBool("Hurt"))
+        if (!rolling && !animator.GetBool("IdleBlock") && !animator.GetBool("Hurt"))
         {
-            m_currentAttack++;
-            m_timeSinceAttack += Time.deltaTime;
-            if (attack && m_timeSinceAttack >= m_timeBetween && m_timeSinceAttack > 0.25f && !m_rolling)
+            currentAttack++;
+            timeSinceAttack += Time.deltaTime;
+            if (attack && timeSinceAttack >= timeBetween && timeSinceAttack > 0.25f && !rolling)
             {
-                m_timeSinceAttack = 0;
+                timeSinceAttack = 0;
                 // Loop back to one after third attack
-                if (m_currentAttack > 3)
-                    m_currentAttack = 1;
+                if (currentAttack > 3)
+                    currentAttack = 1;
 
                 // Reset Attack combo if time since last attack is too large
-                if (m_timeSinceAttack > 1.0f)
-                    m_currentAttack = 1;
+                if (timeSinceAttack > 1.0f)
+                    currentAttack = 1;
 
                 // Call one of three attack animations "Attack1", "Attack2", "Attack3"
-                m_animator.SetTrigger("Attack" + m_currentAttack);
+                animator.SetTrigger("Attack" + currentAttack);
 
                 Hit(SideAttackTransform, SideAttackArea);
 
@@ -278,51 +282,51 @@ public class HeroKnight : MonoBehaviour
 
     void Roll()
     {
-        if (!m_rolling && !m_isWallSliding && !m_animator.GetBool("IdleBlock") && !m_animator.GetBool("Hurt"))
+        if (!rolling && !isWallSliding && !animator.GetBool("IdleBlock") && !animator.GetBool("Hurt"))
         {
-            m_rolling = true;
-            m_animator.SetTrigger("Roll");
-            m_body2d.velocity = new Vector2(m_facingDirection * m_rollForce, m_body2d.velocity.y);
+            rolling = true;
+            animator.SetTrigger("Roll");
+            body2d.velocity = new Vector2(facingDirection * rollForce, body2d.velocity.y);
         }
     }
 
     void Block()
     {
-        if (!m_rolling)
+        if (!rolling)
         {
-            m_animator.SetTrigger("Block");
-            m_animator.SetBool("IdleBlock", true);
+            animator.SetTrigger("Block");
+            animator.SetBool("IdleBlock", true);
         }
     }
 
     void Jump()
     {
-        if (m_grounded && !m_rolling && !m_animator.GetBool("IdleBlock") && !m_animator.GetBool("Hurt"))
+        if (grounded && !rolling && !animator.GetBool("IdleBlock") && !animator.GetBool("Hurt"))
         {
-            m_animator.SetTrigger("Jump");
-            m_grounded = false;
-            m_animator.SetBool("Grounded", m_grounded);
-            m_body2d.velocity = new Vector2(m_body2d.velocity.x, m_jumpForce);
-            m_groundSensor.Disable(0.2f);
+            animator.SetTrigger("Jump");
+            grounded = false;
+            animator.SetBool("Grounded", grounded);
+            body2d.velocity = new Vector2(body2d.velocity.x, jumpForce);
+            groundSensor.Disable(0.2f);
         }
     }
 
     void Die()
     {
-        m_animator.SetBool("noBlood", m_noBlood);
-        m_animator.SetTrigger("Death");
+        animator.SetBool("noBlood", true);
+        animator.SetTrigger("Death");
         dead = true;
     }
 
     void Hurt()
     {
-        if (!m_rolling)
+        if (!rolling)
         {
-            m_animator.SetTrigger("Hurt");
+            animator.SetTrigger("Hurt");
             healthPoints -= 5;
             healthBar.SetHealth(healthPoints);
-            if (m_animator.GetBool("IdleBlock"))
-                m_animator.SetBool("IdleBlock", false);
+            if (animator.GetBool("IdleBlock"))
+                animator.SetBool("IdleBlock", false);
         }
     }
 }
