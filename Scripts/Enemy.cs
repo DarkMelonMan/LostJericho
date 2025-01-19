@@ -1,79 +1,99 @@
 using LabsonCS;
 using System;
-using TMPro;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.Scripting.APIUpdating;
 
 public class Enemy : MonoBehaviour
 {
     [SerializeField]float maxHealth;
-    public float health;
     [SerializeField] float baseDamage;
     [SerializeField] float elementDamage;
     [SerializeField] Element damageType;
     [SerializeField] Element weakness;
     public MonsterEntity monster;
-    [SerializeField] float recoilLength;
     [SerializeField] float recoilFactor;
-    [SerializeField] Vector2 DetectionArea;
-
-    [SerializeField] bool isRecoiling = false;
-    float recoilTimer;
-    Vector2 playerPosition;
-    bool isPlayerDetected = false;
+    [SerializeField] float recoilLength;
+    [SerializeField] Vector2 detectionAreaVector;
+    public bool animationAttack;
+    public bool animationDeath;
+    
+    bool isPlayerDead = false;
     [SerializeField] float movementSpeed;
 
+    Area detectionArea;
+    Area attackArea;
     [SerializeField] Transform SideAttackTransform;
     [SerializeField] Vector2 SideAttackArea;
     [SerializeField] LayerMask attackableLayer;
-    float sideAttackTransformX;
 
+    Animator animator;
     Rigidbody2D rb;
+
+    float timeSinceAttack = 0.0f; 
+    [SerializeField] float timeBetweenAttacks = 1f; 
+    [SerializeField] float attackSpeed;
+    public bool isAttacking;
+    private bool isDying;
+    private const float timeBeforeDeath = 5.0f;
+    private float deathTimer = 0.0f;
+    private bool isPlayerAttacked = false;
+    PlayerEntity player;
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        monster = new MonsterEntity(health, baseDamage, elementDamage, weakness, damageType);
-        health = maxHealth;
-        sideAttackTransformX = SideAttackTransform.localPosition.x;
+        animator = GetComponent<Animator>();
+        detectionArea = new Area(transform, detectionAreaVector, attackableLayer);
+        attackArea = new Area(SideAttackTransform, SideAttackArea, attackableLayer);
+        animator.SetFloat("MovementSpeed", movementSpeed);
+        animator.SetFloat("AttackSpeed", attackSpeed);
+        monster = new MonsterEntity(maxHealth, movementSpeed, baseDamage, elementDamage, weakness, damageType, animator, rb, detectionArea, attackArea, recoilLength, recoilFactor);
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (health <= 0) { 
+        if (monster.HealthPoints <= 0 && !isDying)
+        {
+            animationDeath = true;
+            isDying = true;
+            animator.SetTrigger("Death");
+        }
+        else if (isDying && deathTimer < timeBeforeDeath)
+            deathTimer += Time.deltaTime;
+        else if (!animationDeath && deathTimer > timeBeforeDeath)
             Destroy(gameObject);
-        }
-        if (isRecoiling)
+        if (!isDying)
         {
-            if (recoilTimer < recoilLength)
+            monster.UpdateRecoilTimer();
+            PlayerEntity player = monster.FindPlayer();
+            if (monster.IsPlayerDetected && !isPlayerDead)
             {
-                recoilTimer += Time.deltaTime;
+                if (!isAttacking)
+                    transform.position = monster.Move(transform.position, GetComponent<SpriteRenderer>());
+                Attack();
+                if (player != null)
+                {
+                    if (animationAttack && Math.Abs(monster.PlayerPosition.x - transform.position.x) <= SideAttackArea.x * 1.5 &&
+                        Math.Abs(monster.PlayerPosition.y - transform.position.y) <= SideAttackArea.y * 1.2 && !isPlayerAttacked)
+                    {
+                        player.Hurt(monster.BaseDamage, monster.ElementDamage, monster.DamageType);
+                        isPlayerAttacked = true;
+                    }
+                    if (player.Dead)
+                        isPlayerDead = true;
+                }
             }
-            else
-            {
-                isRecoiling = false;
-                recoilTimer = 0;
-            }
-        }
-        DetectPlayer();
-        if (isPlayerDetected)
-        {
-            Move();
         }
     }
 
-    void Move()
+    void Attack()
     {
-        transform.position = new Vector2(Vector2.MoveTowards(transform.position, playerPosition, Time.deltaTime * movementSpeed).x, transform.position.y);
-        if (transform.position.x - playerPosition.x > 0)
+        timeSinceAttack += Time.deltaTime;
+        if (timeSinceAttack > timeBetweenAttacks)
         {
-            SideAttackTransform.localPosition = new Vector2(-sideAttackTransformX, SideAttackTransform.localPosition.y);
-            GetComponent<SpriteRenderer>().flipX = false;
-        }
-        else {
-            SideAttackTransform.localPosition = new Vector2(sideAttackTransformX, SideAttackTransform.localPosition.y);
-            GetComponent<SpriteRenderer>().flipX = true; 
+            isPlayerAttacked = false;
+            timeSinceAttack = 0;
+            monster.Hit();
         }
     }
 
@@ -81,29 +101,6 @@ public class Enemy : MonoBehaviour
     {
         Gizmos.color = Color.red;
         Gizmos.DrawWireCube(SideAttackTransform.position, SideAttackArea);
-        Gizmos.DrawWireCube(transform.position, DetectionArea);
-    }
-
-    public void EnemyHit(float DamageDone, Vector2 hitDirection, float hitForce) { 
-        health -= DamageDone;
-        if (!isRecoiling)
-        {
-            rb.AddForce(-hitForce * recoilFactor * hitDirection);
-        }
-    }
-
-    void DetectPlayer()
-    {
-        Collider2D[] detectedObjects = Physics2D.OverlapBoxAll(transform.position, DetectionArea, 0, attackableLayer);
-
-        for (int i = 0; i < detectedObjects.Length; i++)
-        {
-            if (detectedObjects[i].CompareTag("Player"))
-            {
-                isPlayerDetected = true;
-                playerPosition = detectedObjects[i].gameObject.transform.position;
-                break;
-            }
-        }
+        Gizmos.DrawWireCube(transform.position, detectionAreaVector);
     }
 }
